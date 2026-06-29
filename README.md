@@ -15,6 +15,7 @@
 - 卸载应用（支持卸载预装应用）
 - 批量卸载选中应用
 - 清除应用数据
+- **上传并安装 APK**（从本地选择 APK 文件，推送到设备并安装）
 
 ### 📁 文件管理
 - 浏览设备文件系统
@@ -35,17 +36,30 @@
 - **ADB 通信**: 基于 Socket 实现 ADB 协议客户端
 - **异步处理**: Kotlin Coroutines
 
+## 下载
+
+前往 [Releases](https://github.com/lyrhub/ADBTool/releases) 页面下载最新 APK。
+
 ## 构建
 
 ```bash
 # 调试版本
-./gradlew assembleDebug
+gradle assembleDebug
 
 # 发布版本
-./gradlew assembleRelease
+gradle assembleRelease
 ```
 
 APK 输出路径: `app/build/outputs/apk/`
+
+## 发版
+
+推送 `v*` 格式的 tag 会自动触发 GitHub Actions 构建并创建 Release：
+
+```bash
+git tag v1.0.1
+git push origin v1.0.1
+```
 
 ## 使用说明
 
