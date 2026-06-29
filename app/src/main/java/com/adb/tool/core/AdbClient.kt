@@ -146,6 +146,42 @@ class AdbClient(private val host: String, private val port: Int = 5555) {
         return executeCommand("ls -la $path")
     }
 
+    /**
+     * 通过ADB协议推送文件到设备
+     * 使用 shell 命令 + base64 分片写入方式
+     */
+    fun pushFileData(data: ByteArray, remotePath: String): Boolean {
+        if (!isConnected) return false
+        return try {
+            // 分片写入，每片约 4KB 的 base64（对应约 3KB 原始数据）
+            val chunkSize = 3072
+            var offset = 0
+            var first = true
+
+            while (offset < data.size) {
+                val end = minOf(offset + chunkSize, data.size)
+                val chunk = data.copyOfRange(offset, end)
+                val base64 = android.util.Base64.encodeToString(chunk, android.util.Base64.NO_WRAP)
+
+                val operator = if (first) ">" else ">>"
+                val cmd = "echo '$base64' | base64 -d $operator $remotePath"
+
+                // 需要新建连接执行每条命令
+                val tempClient = AdbClient(host, port)
+                tempClient.connect()
+                tempClient.executeCommand(cmd)
+                tempClient.disconnect()
+
+                first = false
+                offset = end
+            }
+            true
+        } catch (e: Exception) {
+            e.printStackTrace()
+            false
+        }
+    }
+
     fun pushFile(localPath: String, remotePath: String): String {
         return executeCommand("push $localPath $remotePath")
     }

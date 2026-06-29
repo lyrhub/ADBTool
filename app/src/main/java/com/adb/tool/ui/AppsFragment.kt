@@ -1,12 +1,14 @@
 package com.adb.tool.ui
 
 import android.app.AlertDialog
+import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ArrayAdapter
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -26,6 +28,12 @@ class AppsFragment : Fragment(), MainActivity.OnAdbConnectionListener {
     private val appList = mutableListOf<AppInfo>()
     private var appAdapter: AppListAdapter? = null
     private var showSystemApps = true
+
+    private val pickApkLauncher = registerForActivityResult(
+        ActivityResultContracts.GetContent()
+    ) { uri: Uri? ->
+        uri?.let { installApkFromUri(it) }
+    }
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -61,6 +69,58 @@ class AppsFragment : Fragment(), MainActivity.OnAdbConnectionListener {
 
         binding.btnUninstallSelected.setOnClickListener {
             uninstallSelectedApps()
+        }
+
+        binding.btnInstallApk.setOnClickListener {
+            if (adbClient == null) {
+                Toast.makeText(requireContext(), "请先连接设备", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            pickApkLauncher.launch("application/vnd.android.package-archive")
+        }
+    }
+
+    private fun installApkFromUri(uri: Uri) {
+        binding.progressBar.visibility = View.VISIBLE
+        binding.tvAppCount.text = "正在上传并安装APK..."
+
+        lifecycleScope.launch {
+            val result = withContext(Dispatchers.IO) {
+                try {
+                    // 读取APK文件内容
+                    val inputStream = requireContext().contentResolver.openInputStream(uri)
+                        ?: return@withContext "无法读取文件"
+                    val apkData = inputStream.readBytes()
+                    inputStream.close()
+
+                    val remotePath = "/data/local/tmp/install.apk"
+
+                    // 推送文件到设备
+                    val pushSuccess = adbClient?.pushFileData(apkData, remotePath) ?: false
+                    if (!pushSuccess) {
+                        return@withContext "文件上传失败"
+                    }
+
+                    // 安装APK
+                    val installResult = adbClient?.installApp(remotePath) ?: "安装失败"
+
+                    // 清理临时文件
+                    adbClient?.executeCommand("rm $remotePath")
+
+                    if (installResult.contains("Success", ignoreCase = true)) {
+                        "安装成功"
+                    } else {
+                        "安装结果: $installResult"
+                    }
+                } catch (e: Exception) {
+                    "安装失败: ${e.message}"
+                }
+            }
+
+            binding.progressBar.visibility = View.GONE
+            Toast.makeText(requireContext(), result, Toast.LENGTH_LONG).show()
+            binding.tvAppCount.text = result
+            loadApps()
         }
     }
 
