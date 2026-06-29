@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">ADB工具</string>
+    <string name="connect">连接</string>
+    <string name="disconnect">断开</string>
+    <string name="apps">应用</string>
+    <string name="terminal">终端</string>
+    <string name="files">文件</string>
+    <string name="settings">设置</string>
+</resources>
